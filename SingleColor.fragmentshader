@@ -1,0 +1,14 @@
+#version 330 core
+
+in vec4 color;
+
+// Output data
+out vec4 out_color;
+
+void main()
+{
+
+	// Output color = white
+	out_color = color;
+
+}
