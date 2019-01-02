@@ -16,4 +16,4 @@ add_executable(
         common/shader.hpp
 )
 
-target_link_libraries(Gravity glut GL GLEW GLU pthread freeimage )
+target_link_libraries(Gravity glut GL GLEW GLU pthread freeimage glfw )

@@ -68,15 +68,52 @@ void Structure::loadFile( string filename ) {
         if (myfile.is_open()) {
 
             getline(myfile, line);
-            while (myfile.good()) {
-                if (line.size() > 0) {
-                    // read lines
+            num_objects = std::stoi(line);
 
-                }
+            positions.reserve(num_objects);
+            colours.reserve(num_objects);
 
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
                 getline(myfile, line);
+                //positions.push_back({ 0.0f, 0.0f, std::stof(line), 1.0f});
+                positions.push_back({ 0.0f, 0.0f, 0.0f, 1.0f});
+                colours.push_back({ 1.0f, 1.0f, 1.0f, 0 });
             }
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                positions[i].pos.x = std::stof(line);
+            }
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                positions[i].pos.y = std::stof(line);
+            }
+
             myfile.close();
+            /*
+            // Normalise
+
+            auto minmax_x = std::minmax_element(positions.begin(), positions.end(),
+                                                [] (ObjectPositions const& lhs, ObjectPositions const& rhs) {return lhs.pos.x < rhs.pos.x;});
+            auto minmax_y = std::minmax_element(positions.begin(), positions.end(),
+                                                [] (ObjectPositions const& lhs, ObjectPositions const& rhs) {return lhs.pos.y < rhs.pos.y;});
+            auto minmax_z = std::minmax_element(positions.begin(), positions.end(),
+                                                [] (ObjectPositions const& lhs, ObjectPositions const& rhs) {return lhs.pos.z < rhs.pos.z;});
+
+            auto max_x = minmax_x.second->pos.x;
+            auto max_y = minmax_y.second->pos.y;
+            auto max_z = minmax_z.second->pos.z;
+            double divisor = std::pow( 10.0, int(std::log10(std::max(max_x, std::max(max_y, max_z))))+1 );
+
+            std::for_each(positions.begin(), positions.end(), [=](ObjectPositions &n){
+                n.pos.x /= divisor;
+                n.pos.x *= 10000;
+                n.pos.y /= divisor;
+                n.pos.y *= 10000;
+                n.pos.z /= divisor;
+            });
+            */
+            cout << "Loaded";
+
         } else {
             cout << "Unable to open file";
         }

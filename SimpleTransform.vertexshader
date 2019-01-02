@@ -8,14 +8,16 @@ out vec4 color;
 // Values that stay constant for the whole mesh.
 uniform mat4 MVP;
 
+uniform vec3 cameraPosition;
+
 void main(){
 
 	// Output position of the vertex, in clip space : MVP * position
-	// gl_Position =  MVP * vertexPosition_modelspace;
-	gl_Position =  vertexPosition_modelspace;
+	gl_Position =  MVP * vertexPosition_modelspace;
+
 	color = in_color;
 
-	gl_PointSize = 10.0;
+	// gl_PointSize = 20;
 
 }
 

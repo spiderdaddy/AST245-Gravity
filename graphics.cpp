@@ -10,6 +10,7 @@
 #include <FreeImage.h>
 
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include <GL/freeglut.h>
 
 #include <glm/glm.hpp>
@@ -27,13 +28,15 @@ int CurrentWidth = 800;
 int CurrentHeight = 800;
 int WindowHandle = 0;
 unsigned FrameCount = 0;
+unsigned Frame = 0;
 
 GLuint VaoId;
 GLuint VboAreaId;
 GLuint VboPropertyId;
 
 GLuint programID;
-GLuint MatrixID;
+GLuint matrixID;
+GLuint cameraPositionID;
 
 glm::mat4 MVP;
 
@@ -63,9 +66,56 @@ void setStructure( Structure * s ) {
     CreateVBO();
 }
 
+float radius = 100.0f;
+float camTheta = 0;
+float camPhi = 0;
+float camRadius = radius;
+float zoomFactor = 1.0f;
+
+
 bool keyPressed = false;
 void keyDownFunc( unsigned char key, int x, int y) {
+
     keyPressed = true;
+    float cameraSpeed = glm::pi<float>()/90.0f; // adjust accordingly
+    switch (key) {
+        case 'w':
+            camRadius -= 1.0f;
+            break;
+        case 's':
+            camRadius += 1.0f;
+            break;
+        case 'j':
+            camTheta -= cameraSpeed;
+            break;
+        case 'l':
+            camTheta += cameraSpeed;
+            break;
+        case 'i':
+            camPhi += cameraSpeed;
+            break;
+        case 'k':
+            camPhi -= cameraSpeed;
+            break;
+        case 'q':
+            zoomFactor *= 1.1;
+            //camZ -= cameraSpeed;
+            break;
+        case 'a':
+            zoomFactor /= 1.1;
+            //camZ += cameraSpeed;
+            break;
+        case 'c':
+            camTheta = 0;
+            camPhi = 0;
+            camRadius = radius;
+            zoomFactor=1.0f;
+            break;
+    }
+
+    if (camRadius < 1.0f) { camRadius = 1.0f; }
+    if (camPhi > 0.0f ) { camPhi = 0.0f; }
+    if (camPhi < -glm::half_pi<float>()) {camPhi = -glm::half_pi<float>();}
 }
 
 void keyUpFunc( unsigned char key, int x, int y) {
@@ -119,6 +169,46 @@ void RenderFunction() {
 
     rendering = true;
 
+    //cout << camTheta << " " << camPhi << " " << zoomFactor << "\n";
+
+    //glm::vec3 cameraPos = glm::vec3(camRadius*sin(camPhi)*cos(camTheta),
+    //                                camRadius*sin(camPhi)*sin(camTheta),
+    //                                camRadius*cos(camPhi) );
+
+
+    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, camRadius);
+    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+
+    glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+
+
+
+    // Model matrix : an identity matrix (model will be at the origin)
+    mat4x4 Model = mat4x4(1.0f);
+    Model = glm::rotate(Model, camPhi, glm::vec3(1.0f, 0.0f, 0.0f));
+    Model = glm::rotate(Model, camTheta, glm::vec3(0.0f, 0.0f, 1.0f));
+    Model = glm::scale(Model, glm::vec3(zoomFactor));
+
+    // mat4x4 Projection = glm::ortho(-10.0f, -1.0f, -2.0f, 2.0f); // In world coordinates
+    //glm::mat4 Projection = glm::ortho(-radius,radius,-radius,radius,-radius*zoomFactor,2.0f*radius*zoomFactor); // In world coordinates
+    glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float)CurrentWidth / (float)CurrentHeight, 0.0f, 2.0f*radius*zoomFactor);
+
+
+    // Our ModelViewProjection : multiplication of our 3 matrices
+    MVP = Projection * view * Model; // Remember, matrix multiplication is the other way around
+
+
+    // Get a handle for our "MVP" uniform
+    matrixID = glGetUniformLocation(programID, "MVP");
+    glUniformMatrix4fv(matrixID, 1, GL_FALSE, &MVP[0][0]);
+
+    // Get a handle for our "cameraPosition" uniform
+    //cameraPositionID = glGetUniformLocation(programID, "cameraPosition");
+    //glUniform3fv(cameraPositionID, 1, &view[0]);
+
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Use our shader
@@ -126,7 +216,7 @@ void RenderFunction() {
 
     // Send our transformation to the currently bound shader,
     // in the "MVP" uniform
-    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+    glUniformMatrix4fv(matrixID, 1, GL_FALSE, &MVP[0][0]);
 
     std::vector<Structure::ObjectPositions> positions = structure->getObjectPositions();
     glBindBuffer(GL_ARRAY_BUFFER, VboAreaId);
@@ -146,6 +236,8 @@ void RenderFunction() {
     glFlush();
     glutSwapBuffers();
     rendering = false;
+
+
 }
 
 
@@ -172,6 +264,7 @@ void TimerFunction(int Value) {
     }
 
     FrameCount = 0;
+    Frame++;
     glutTimerFunc(250, TimerFunction, 1);
 }
 
@@ -271,8 +364,8 @@ void CreateShaders() {
     MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
     // Get a handle for our "MVP" uniform
-    MatrixID = glGetUniformLocation(programID, "MVP");
-
+    matrixID = glGetUniformLocation(programID, "MVP");
+    glUniformMatrix4fv(matrixID, 1, GL_FALSE, &MVP[0][0]);
 
 }
 

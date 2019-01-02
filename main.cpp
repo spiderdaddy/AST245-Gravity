@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     Initialize(argc, argv);
     InitializeGraphics(argc, argv);
 
-    Structure * s = new Structure("");
+    Structure * s = new Structure("../data.ascii");
     setStructure(s);
 
     GraphicsMainLoop();
