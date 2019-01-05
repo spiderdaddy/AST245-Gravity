@@ -14,6 +14,9 @@ add_executable(
         Structure.h
         common/shader.cpp
         common/shader.hpp
-)
+        GravityCalculator.cpp
+        GravityCalculator.h
+        DirectNBodyGravityCalculator.cpp
+        DirectNBodyGravityCalculator.h OctaTree.cpp OctaTree.h)
 
 target_link_libraries(Gravity glut GL GLEW GLU pthread freeimage glfw )

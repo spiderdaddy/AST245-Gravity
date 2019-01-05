@@ -9,6 +9,7 @@
 #include <vector>
 #include <fstream>
 #include <algorithm>
+#include <functional>
 
 #include <glm/common.hpp>
 #include <iomanip>
@@ -20,9 +21,36 @@
 using namespace std;
 
 
-std::vector<Structure::ObjectPositions> Structure::getObjectPositions() { return positions; }
+std::vector<Structure::Position> &Structure::getPositions() {
+    return positions;
+}
 
-std::vector<Structure::ObjectColours> Structure::getObjectColours() { return colours; }
+std::vector<Structure::Colour> &Structure::getColours() {
+    return colours;
+}
+
+std::vector<Structure::Acceleration> &Structure::getAccelerations() {
+    return accelerations;
+}
+
+vector<Structure::Mass> &Structure::getMasses() {
+    return masses;
+}
+
+vector<Structure::Velocity> &Structure::getVelocities() {
+    return velocities;
+}
+
+vector<Structure::Softening> &Structure::getSoftenings() {
+    return softenings;
+}
+
+vector<Structure::Potential> &Structure::getPotentials() {
+    return potentials;
+}
+
+
+
 
 Structure::Structure( std::string filename ) {
 
@@ -58,6 +86,28 @@ void Structure::CalcSystemEnergy() {
     // not yet
 }
 
+float max_r = 0.0f;
+
+float Structure::meanInterParticleSeparation() {
+
+    // https://en.wikipedia.org/wiki/Mean_inter-particle_distance
+
+    max_r = 0.0f;
+
+    std::for_each(positions.begin(), positions.end(),
+        []( Structure::Position &pos ){
+            Structure::XYZW_GL p = pos.pos;
+            float r = std::sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
+            max_r = std::max(max_r, r);
+        });
+
+    double V = 4.0 / 3.0 * M_PI * max_r * max_r * max_r;
+    double n = positions.size() / V;
+    double w = std::pow( (3.0/4.0/M_PI/n), 1.0/3.0 );
+    return (float)w;
+
+}
+
 
 void Structure::loadFile( string filename ) {
 
@@ -68,25 +118,61 @@ void Structure::loadFile( string filename ) {
         if (myfile.is_open()) {
 
             getline(myfile, line);
-            num_objects = std::stoi(line);
+            num_objects = (unsigned)std::stoi(line);
+
+            masses.reserve(num_objects);
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                masses.push_back({std::stof(line)});
+            }
 
             positions.reserve(num_objects);
             colours.reserve(num_objects);
+            accelerations.reserve(num_objects);
 
             for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
                 getline(myfile, line);
-                //positions.push_back({ 0.0f, 0.0f, std::stof(line), 1.0f});
-                positions.push_back({ 0.0f, 0.0f, 0.0f, 1.0f});
+                positions.push_back({ std::stof(line), 0.0f, 0.0f, 1.0f});
                 colours.push_back({ 1.0f, 1.0f, 1.0f, 0 });
-            }
-            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
-                getline(myfile, line);
-                positions[i].pos.x = std::stof(line);
+                accelerations.push_back({ 0.0f, 0.0f, 0.0f });
             }
             for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
                 getline(myfile, line);
                 positions[i].pos.y = std::stof(line);
             }
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                positions[i].pos.z = std::stof(line);
+            }
+
+            velocities.reserve(num_objects);
+
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                velocities.push_back({ std::stof(line), 0.0f, 0.0f});
+            }
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                velocities[i].v.y = std::stof(line);
+            }
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                velocities[i].v.z = std::stof(line);
+            }
+
+            softenings.reserve(num_objects);
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                softenings.push_back({std::stof(line)});
+            }
+
+            potentials.reserve(num_objects);
+            for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+                getline(myfile, line);
+                potentials.push_back({std::stof(line)});
+            }
+
+
 
             myfile.close();
             /*
@@ -112,10 +198,10 @@ void Structure::loadFile( string filename ) {
                 n.pos.z /= divisor;
             });
             */
-            cout << "Loaded";
+            cout << "Data Load Complete\n";
 
         } else {
-            cout << "Unable to open file";
+            cout << "Unable to open file" << filename << "\n";
         }
 
     } else {
@@ -125,6 +211,8 @@ void Structure::loadFile( string filename ) {
 
         positions.reserve(num_objects);
         colours.reserve(num_objects);
+        accelerations.reserve(num_objects);
+
 
         for ( unsigned i = 0; i < gridsize; i++ ) {
             for ( unsigned j = 0; j < gridsize; j++ ) {
@@ -135,3 +223,70 @@ void Structure::loadFile( string filename ) {
     }
 }
 
+void Structure::saveFile( string filename_base ) {
+
+    string filename;
+    filename.append(filename_base);
+    filename.append("-");
+
+    std::time_t t = std::time(nullptr);
+    std::tm tm = *std::localtime(&t);
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S", &tm);
+    filename.append(buffer);
+
+    filename.append(".ascii");
+
+    ofstream myfile(filename);
+    if (myfile.is_open()) {
+
+        myfile << num_objects << " 0 " << num_objects << "\n";
+
+        myfile.precision(8);
+        myfile << std::fixed;
+
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << masses[i].m << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << positions[i].pos.x << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << positions[i].pos.y << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << positions[i].pos.z << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << velocities[i].v.x << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << velocities[i].v.y << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << velocities[i].v.z << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << softenings[i].s << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << potentials[i].pot << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << accelerations[i].a.x << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << accelerations[i].a.y << "\n";
+        }
+        for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
+            myfile << accelerations[i].a.z << "\n";
+        }
+        myfile.close();
+
+        cout << "File saved: " << filename << "\n";
+
+    } else {
+        cout << "Unable to open file" << filename << "\n";
+    }
+
+}

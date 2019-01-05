@@ -63,14 +63,38 @@ void GraphicsMainLoop() {
 
 void setStructure( Structure * s ) {
     structure = s;
-    CreateVBO();
 }
 
 float radius = 100.0f;
-float camTheta = 0;
-float camPhi = 0;
+float camTheta = -glm::quarter_pi<float>()/2.0f;
+float camPhi = -glm::quarter_pi<float>();
 float camRadius = radius;
 float zoomFactor = 1.0f;
+
+
+bool showAxis = true;
+GLuint VaoAxisId;
+GLuint VboAxisLinesId;
+GLuint VboAxisColorsId;
+
+std::vector<Structure::XYZW_GL> axis_pos{
+    {0.0f,        0.0f,    0.0f,    1.0f},
+    {camRadius/2.0f, 0.0f,    0.0f,    1.0f},
+    {0.0f,        0.0f,    0.0f,    1.0f},
+    {0.0f,        camRadius/2.0f,  0.0f,    1.0f},
+    {0.0f,        0.0f,    0.0f,    1.0f},
+    {0.0f,        0.0f,    camRadius/2.0f,  1.0f}
+};
+
+std::vector<Structure::RGBA_GL> axis_colour {
+    {0.0f,    1.0f,    0.0f,    0.0f},
+    {0.0f,    1.0f,    0.0f,    0.0f},
+    {0.0f,    1.0f,    0.0f,    0.0f},
+    {0.0f,    1.0f,    0.0f,    0.0f},
+    {1.0f,    0.0f,    0.0f,    0.0f},
+    {1.0f,    0.0f,    0.0f,    0.0f},
+};
+
 
 
 bool keyPressed = false;
@@ -80,10 +104,10 @@ void keyDownFunc( unsigned char key, int x, int y) {
     float cameraSpeed = glm::pi<float>()/90.0f; // adjust accordingly
     switch (key) {
         case 'w':
-            camRadius -= 1.0f;
+            camRadius -= 0.5f;
             break;
         case 's':
-            camRadius += 1.0f;
+            camRadius += 0.5f;
             break;
         case 'j':
             camTheta -= cameraSpeed;
@@ -106,16 +130,21 @@ void keyDownFunc( unsigned char key, int x, int y) {
             //camZ += cameraSpeed;
             break;
         case 'c':
-            camTheta = 0;
-            camPhi = 0;
+            camTheta = -glm::quarter_pi<float>()/2.0f;
+            camPhi = -glm::quarter_pi<float>();
             camRadius = radius;
             zoomFactor=1.0f;
             break;
+
+        case 'g':
+            showAxis = !showAxis;
+            break;
+
     }
 
-    if (camRadius < 1.0f) { camRadius = 1.0f; }
+    if (camRadius < 1.0f) { camRadius = 0.5f; }
     if (camPhi > 0.0f ) { camPhi = 0.0f; }
-    if (camPhi < -glm::half_pi<float>()) {camPhi = -glm::half_pi<float>();}
+    if (camPhi < -glm::pi<float>()) {camPhi = -glm::pi<float>();}
 }
 
 void keyUpFunc( unsigned char key, int x, int y) {
@@ -155,6 +184,8 @@ void InitializeGraphics(int argc, char *argv[]) {
 
     glutKeyboardFunc(keyDownFunc);
     glutKeyboardUpFunc(keyUpFunc);
+
+    CreateVBO();
 
 }
 
@@ -218,20 +249,38 @@ void RenderFunction() {
     // in the "MVP" uniform
     glUniformMatrix4fv(matrixID, 1, GL_FALSE, &MVP[0][0]);
 
-    std::vector<Structure::ObjectPositions> positions = structure->getObjectPositions();
+    std::vector<Structure::Position> positions = structure->getPositions();
     glBindBuffer(GL_ARRAY_BUFFER, VboAreaId);
-    glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(Structure::ObjectPositions), &positions[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(Structure::Position), &positions[0], GL_STATIC_DRAW);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::XYZW_GL), 0);
     glEnableVertexAttribArray(1);
 
     structure->MapObjectToColor();
-    std::vector<Structure::ObjectColours> colours = structure->getObjectColours();
+    std::vector<Structure::Colour> colours = structure->getColours();
     glBindBuffer(GL_ARRAY_BUFFER, VboPropertyId);
-    glBufferData(GL_ARRAY_BUFFER, colours.size() * sizeof(Structure::ObjectColours), &colours[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, colours.size() * sizeof(Structure::Colour), &colours[0], GL_STATIC_DRAW);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::RGBA_GL), 0);
     glEnableVertexAttribArray(0);
 
     glDrawArrays(GL_POINTS, 0, (GLsizei)positions.size());
+
+    if (showAxis) {
+
+        axis_pos[1].x = camRadius / 5.0f;
+        axis_pos[3].y = camRadius / 5.0f;
+        axis_pos[5].z = camRadius / 5.0f;
+        glBindBuffer(GL_ARRAY_BUFFER, VboAxisLinesId);
+        glBufferData(GL_ARRAY_BUFFER, axis_pos.size() * sizeof(Structure::XYZW_GL), &axis_pos[0], GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::XYZW_GL), 0);
+        glEnableVertexAttribArray(1);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VboAxisColorsId);
+        glBufferData(GL_ARRAY_BUFFER, axis_colour.size() * sizeof(Structure::RGBA_GL), &axis_colour[0], GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::RGBA_GL), 0);
+        glEnableVertexAttribArray(0);
+
+        glDrawArrays(GL_LINES, 0, 6);
+    }
 
     glFlush();
     glutSwapBuffers();
@@ -279,21 +328,31 @@ void CreateVBO() {
     glGenVertexArrays(1, &VaoId);
     glBindVertexArray(VaoId);
 
-    std::vector<Structure::ObjectPositions> positions = structure->getObjectPositions();
+    std::vector<Structure::Position> positions = structure->getPositions();
 
     glGenBuffers(1, &VboAreaId);
     glBindBuffer(GL_ARRAY_BUFFER, VboAreaId);
-    glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(Structure::ObjectPositions), &positions[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(Structure::Position), &positions[0], GL_STATIC_DRAW);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::XYZW_GL), 0);
     glEnableVertexAttribArray(1);
 
-    std::vector<Structure::ObjectColours> colours = structure->getObjectColours();
+    std::vector<Structure::Colour> colours = structure->getColours();
 
     glGenBuffers(1, &VboPropertyId);
     glBindBuffer(GL_ARRAY_BUFFER, VboPropertyId);
-    glBufferData(GL_ARRAY_BUFFER, colours.size() * sizeof(Structure::ObjectColours), &colours[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, colours.size() * sizeof(Structure::Colour), &colours[0], GL_STATIC_DRAW);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::RGBA_GL), 0);
     glEnableVertexAttribArray(0);
+
+    // Buffers for the Axis
+
+    glGenVertexArrays(1, &VaoAxisId);
+    glBindVertexArray(VaoAxisId);
+
+    glGenBuffers(1, &VboAxisLinesId);
+    glGenBuffers(1, &VboAxisColorsId);
+
+
 
     ErrorCheckValue = glGetError();
     if (ErrorCheckValue != GL_NO_ERROR) {
