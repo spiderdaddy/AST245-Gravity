@@ -12,16 +12,19 @@
 #include <vector>
 #include <bits/stdc++.h>
 
+#include "Structure.h"
+
 struct OctaTreeNode {
 
 public:
     OctaTreeNode( OctaTreeNode *parent,
                   unsigned level,
-                  unsigned X, unsigned Y, unsigned Z
+                  unsigned X, unsigned Y, unsigned Z,
                   double h);
 
     OctaTreeNode * parent;
     OctaTreeNode * leaf[8];
+    std::vector<unsigned> elements;
     unsigned level;
     // grid coordinates
     unsigned X, Y, Z;
@@ -34,20 +37,23 @@ public:
 class OctaTree {
 
 public:
-    OctaTree(unsigned max_level, double h);
+    OctaTree(Structure * structure);
     void printNodes();
     OctaTreeNode * getHead();
     std::vector<OctaTreeNode*> getLevelVector(unsigned level);
     unsigned getMaxLevel();
+    OctaTreeNode *getNode(double x, double y, double z);
 
 private:
     OctaTreeNode * createNode( OctaTreeNode * parent,
                                unsigned level,
-                               unsigned X, unsigned Y, unsigned Z
+                               unsigned X, unsigned Y, unsigned Z,
                                double h );
     void printOneNode(OctaTreeNode*);
-    std::vector<std::vector<OctaTreeNode*>> levelVector;
+    //std::vector<std::vector<OctaTreeNode*>> levelVector;
     void printNodesPerLevel();
+    unsigned getWidth(unsigned level);
+    unsigned getPos(unsigned level, unsigned X, unsigned Y, unsigned Z);
 
     unsigned max_level = 0;
     OctaTreeNode *head;

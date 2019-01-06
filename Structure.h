@@ -82,6 +82,10 @@ public:
 
     float meanInterParticleSeparation();
 
+    const Position &getMinPosition() const;
+
+    const Position &getMaxPosition() const;
+
 private:
     unsigned int num_objects;
 
@@ -95,8 +99,8 @@ private:
     std::vector<Structure::Colour> colours;
     std::vector<Structure::Acceleration> accelerations;
 
-
-private:
+    Structure::Position minPosition;
+    Structure::Position maxPosition;
 
 };
 

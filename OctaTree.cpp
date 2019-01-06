@@ -19,12 +19,16 @@ OctaTreeNode::OctaTreeNode(
     std::fill(leaf, leaf + 8, nullptr);
 
     if (level != 0) {
-        xmin = -h + (double) X / double(level) * h;
-        xmax = -h + (double) (X + 1) / double(level) * h;
-        ymin = -h + (double) Y / double(level) * h;
-        ymax = -h + (double) (Y + 1) / double(level) * h;
-        zmin = -h + (double) Y / double(level) * h;
-        zmax = -h + (double) (Z + 1) / double(level) * h;
+        double segments = pow(2, level);
+        double Xpos = X * 2;
+        double Ypos = Y * 2;
+        double Zpos = Z * 2;
+        xmin = -h + Xpos / segments * h;
+        xmax = -h + (Xpos + 2) / segments * h;
+        ymin = -h + Ypos / segments * h;
+        ymax = -h + (Ypos + 2) / segments * h;
+        zmin = -h + Zpos / segments * h;
+        zmax = -h + (Zpos + 2) / segments * h;
     } else {
         // XXX: Bah, come up with a better formula to account for div by 0
         xmin = -h ;
@@ -47,59 +51,77 @@ std::ostream &operator<<(std::ostream &os, const OctaTreeNode *node) {
 
     auto node_counter = (OctaTreeNode*)node;
     while( node_counter->parent != nullptr ) {
-        os << "|   ";
+        os << " |  ";
         node_counter = node_counter->parent;
     }
+
+    os << " ("
+       << node->X << ", " << node->Y << ", " << node->Z << "), ("
+       << node->x << ", " << node->y << ", " << node->z << "), ("
+       << node->xmin << ", " << node->xmax << "), ("
+       << node->ymin << ", " << node->ymax << "), ("
+       << node->zmin << ", " << node->zmax << "), ("
+       << node->V << ", " << node->mass << "), ";
 
     os << (void *) node->parent << ", (";
     for (int i = 0; i < 7; i++) {
         os << (void *) node->leaf[i] << ", ";
     }
-    os << (void *) node->leaf[7] << "), ("
-       << node->X << ", " << node->X << ", " << node->Z << "), ("
-       << node->x << ", " << node->y << ", " << node->z << "), ("
-       << node->xmin << ", " << node->xmax << "), ("
-       << node->ymin << ", " << node->ymax << "), ("
-       << node->zmin << ", " << node->zmax << "), ("
-       << node->V << ", " << node->mass << ")";
+    os << (void *) node->leaf[7] << ")";
 
     return os;
 }
 
-OctaTree::OctaTree(unsigned max_level, double h) {
-    this->max_level = max_level;
-    this->h = h;
+unsigned OctaTree::getWidth(unsigned level) {
+    return (unsigned)pow(2, level);
+}
+
+unsigned OctaTree::getPos(unsigned level, unsigned X, unsigned Y, unsigned Z) {
+    auto width = getWidth(level);
+    return Z*(width*width) + (Y*width) + X;
+}
+
+OctaTree::OctaTree(Structure * s) {
+
+    auto startTime = std::chrono::system_clock::now();
 
     // Create the list of vectors which will contain the nodes for each level
-    levelVector = std::vector<std::vector<OctaTreeNode *>>(max_level+1);
+    // XXX levelVector = std::vector<std::vector<OctaTreeNode *>>(max_level+1);
 
     // Create the vectors for each level
-    for (int i = 0; i < (max_level + 1); i++) {
+    /* XXX
+    for (unsigned i = 0; i < (max_level + 1); i++) {
         levelVector[i] = std::vector<OctaTreeNode *>();
-        levelVector[i].reserve((i+1)*(i+1)*(i+1));
+        auto width = getWidth(i);
+        levelVector[i].reserve(width*width*width);
     }
+    */
 
     // Recurseively create the node structure
     head = createNode((OctaTreeNode *) nullptr, 0, 0, 0, 0, h);
+    auto endTime = std::chrono::system_clock::now();
+    std::cout << "Tree creation time:" << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() << "\n";
 
 }
 
 OctaTreeNode *OctaTree::createNode(OctaTreeNode * parent,
                                    unsigned level,
-                                   unsigned X, unsigned Y, unsigned Z
+                                   unsigned X, unsigned Y, unsigned Z,
                                    double h) {
 
-    auto node = new OctaTreeNode( parent, level, X, Y, Z, h);
-    levelVector[level].push_back(node);
+    auto node = new OctaTreeNode( parent, level, X, Y, Z, h );
+    levelVector[level][getPos(level, X, Y, Z)] = node;
 
     if (level < max_level) {
-        for (int i = 0; i < 8; i++ ) {
+        for (unsigned i = 0; i < 8; i++ ) {
 
             // The formula for the nodes is to double the current position
             // and add the binary bit of the index
             node->leaf[i] = createNode(node,
                                        level + 1,
-                                       (X*2) + i&1, (Y*2) + i&2, (Z*2) + Y&4,
+                                       (X*2) + (i&1),
+                                       (Y*2) + ((i>>1)&1),
+                                       (Z*2) + ((i>>2)&1),
                                        h
             );
         }
@@ -111,7 +133,7 @@ OctaTreeNode *OctaTree::createNode(OctaTreeNode * parent,
 void OctaTree::printOneNode(OctaTreeNode *node) {
     std::cout << node << "\n";
     if (node != nullptr) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 8; i++) {
             if (node->leaf[i] != nullptr) {
                 printOneNode(node->leaf[i]);
             }
@@ -122,7 +144,7 @@ void OctaTree::printOneNode(OctaTreeNode *node) {
 void OctaTree::printNodesPerLevel() {
     int level = 0;
     for (std::vector<OctaTreeNode *> nodes : levelVector) {
-        std::cout << "Level:" << (max_level - level) << "\n";
+        std::cout << "Level:" << level << "\n";
         int linebreak = 0;
         for (OctaTreeNode *node : nodes) {
             std::cout << (void *) node << ",";
@@ -137,6 +159,8 @@ void OctaTree::printNodesPerLevel() {
 }
 
 void OctaTree::printNodes() {
+
+    auto startTime = std::chrono::system_clock::now();
 
     std::streambuf *psbuf, *backup;
     std::ofstream filestr;
@@ -154,8 +178,10 @@ void OctaTree::printNodes() {
     std::cout.rdbuf(backup);        // restore cout's original streambuf
 
     filestr.close();
+    auto endTime = std::chrono::system_clock::now();
 
-    std::cout << "INFO: OctaTree written to " << filename;
+    std::cout << "INFO: OctaTree written to " << filename << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() << "\n";
+    ;
 
 
 }
@@ -169,4 +195,17 @@ std::vector<OctaTreeNode *> OctaTree::getLevelVector(unsigned level) {
 
 }
 
-int OctaTree::getMaxLevel() { return max_level; }
+unsigned OctaTree::getMaxLevel() {
+    return max_level;
+}
+
+OctaTreeNode *OctaTree::getNode(double x, double y, double z) {
+    auto cell_width = 2.0 * this->h / getWidth(this->max_level);
+    auto X = (unsigned)((x+h) / cell_width);
+    auto Y = (unsigned)((y+h) / cell_width);
+    auto Z = (unsigned)((z+h) / cell_width);
+    return levelVector[max_level][getPos(max_level, X, Y, Z)];
+}
+
+
+

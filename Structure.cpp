@@ -175,29 +175,22 @@ void Structure::loadFile( string filename ) {
 
 
             myfile.close();
-            /*
-            // Normalise
 
             auto minmax_x = std::minmax_element(positions.begin(), positions.end(),
-                                                [] (ObjectPositions const& lhs, ObjectPositions const& rhs) {return lhs.pos.x < rhs.pos.x;});
+                                                [] (Structure::Position const& lhs, Structure::Position const& rhs) {return lhs.pos.x < rhs.pos.x;});
             auto minmax_y = std::minmax_element(positions.begin(), positions.end(),
-                                                [] (ObjectPositions const& lhs, ObjectPositions const& rhs) {return lhs.pos.y < rhs.pos.y;});
+                                                [] (Structure::Position const& lhs, Structure::Position const& rhs) {return lhs.pos.y < rhs.pos.y;});
             auto minmax_z = std::minmax_element(positions.begin(), positions.end(),
-                                                [] (ObjectPositions const& lhs, ObjectPositions const& rhs) {return lhs.pos.z < rhs.pos.z;});
+                                                [] (Structure::Position const& lhs, Structure::Position const& rhs) {return lhs.pos.z < rhs.pos.z;});
 
-            auto max_x = minmax_x.second->pos.x;
-            auto max_y = minmax_y.second->pos.y;
-            auto max_z = minmax_z.second->pos.z;
-            double divisor = std::pow( 10.0, int(std::log10(std::max(max_x, std::max(max_y, max_z))))+1 );
+            maxPosition.pos.x = minmax_x.second->pos.x;
+            maxPosition.pos.y = minmax_y.second->pos.y;
+            maxPosition.pos.z = minmax_z.second->pos.z;
 
-            std::for_each(positions.begin(), positions.end(), [=](ObjectPositions &n){
-                n.pos.x /= divisor;
-                n.pos.x *= 10000;
-                n.pos.y /= divisor;
-                n.pos.y *= 10000;
-                n.pos.z /= divisor;
-            });
-            */
+            minPosition.pos.x = minmax_x.first->pos.x;
+            minPosition.pos.y = minmax_y.first->pos.y;
+            minPosition.pos.z = minmax_z.first->pos.z;
+
             cout << "Data Load Complete\n";
 
         } else {
@@ -221,6 +214,14 @@ void Structure::loadFile( string filename ) {
             }
         }
     }
+}
+
+const Structure::Position &Structure::getMinPosition() const {
+    return minPosition;
+}
+
+const Structure::Position &Structure::getMaxPosition() const {
+    return maxPosition;
 }
 
 void Structure::saveFile( string filename_base ) {
