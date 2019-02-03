@@ -41,6 +41,15 @@ GLuint cameraPositionID;
 glm::mat4 MVP;
 
 Structure * structure;
+void setStructure( Structure * s ) {
+    structure = s;
+}
+
+GravityCalculator * gravityCalculator;
+void setCalculator( GravityCalculator * gc ) {
+    gravityCalculator = gc;
+}
+
 
 bool render_on = true;
 
@@ -53,16 +62,15 @@ bool isRendering() { return rendering ;}
 
 void GraphicsMainLoop() {
 
-    while (structure == nullptr) {
+    while (structure == nullptr
+           || !structure->isReady() ) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    CreateVBO();
+
     glutMainLoop();
 
-}
-
-void setStructure( Structure * s ) {
-    structure = s;
 }
 
 float radius = 100.0f;
@@ -87,13 +95,27 @@ std::vector<Structure::XYZW_GL> axis_pos{
 };
 
 std::vector<Structure::RGBA_GL> axis_colour {
-    {0.0f,    1.0f,    0.0f,    0.0f},
-    {0.0f,    1.0f,    0.0f,    0.0f},
+    {0.0f,    0.0f,    1.0f,    0.0f},
+    {0.0f,    0.0f,    1.0f,    0.0f},
     {0.0f,    1.0f,    0.0f,    0.0f},
     {0.0f,    1.0f,    0.0f,    0.0f},
     {1.0f,    0.0f,    0.0f,    0.0f},
     {1.0f,    0.0f,    0.0f,    0.0f},
 };
+
+bool showTreeFrame = true;
+GLuint VaoTreeFrameId;
+GLuint VboTreeFrameLinesId;
+GLuint VboTreeFrameColorsId;
+std::vector<Structure::XYZW_GL> * tree_frame_pos;
+std::vector<Structure::RGBA_GL> * tree_frame_colour;
+std::vector<Structure::XYZW_GL> * new_tree_frame_pos;
+std::vector<Structure::RGBA_GL> * new_tree_frame_colour;
+std::vector<Structure::XYZW_GL> * tree_frame_pos_1;
+std::vector<Structure::RGBA_GL> * tree_frame_colour_1;
+std::vector<Structure::XYZW_GL> * tree_frame_pos_2;
+std::vector<Structure::RGBA_GL> * tree_frame_colour_2;
+
 
 
 
@@ -136,8 +158,12 @@ void keyDownFunc( unsigned char key, int x, int y) {
             zoomFactor=1.0f;
             break;
 
-        case 'g':
+        case 'x':
             showAxis = !showAxis;
+            break;
+
+        case 'b':
+            showTreeFrame = !showTreeFrame;
             break;
 
     }
@@ -185,10 +211,160 @@ void InitializeGraphics(int argc, char *argv[]) {
     glutKeyboardFunc(keyDownFunc);
     glutKeyboardUpFunc(keyUpFunc);
 
-    CreateVBO();
+    tree_frame_pos_1 = new std::vector<Structure::XYZW_GL>;
+    tree_frame_colour_1 = new std::vector<Structure::RGBA_GL>;
+    tree_frame_pos_2 = new std::vector<Structure::XYZW_GL>;
+    tree_frame_colour_2 = new std::vector<Structure::RGBA_GL>;
+
+    tree_frame_pos = tree_frame_pos_1;
+    tree_frame_colour = tree_frame_colour_1;
+    new_tree_frame_pos = tree_frame_pos_2;
+    new_tree_frame_colour = tree_frame_colour_2;
 
 }
 
+Structure::XYZW_GL c000 = {0.0f, 0.0f, 0.0f, 1.0f};
+Structure::XYZW_GL c100 = {0.0f, 0.0f, 0.0f, 1.0f};
+Structure::XYZW_GL c010 = {0.0f, 0.0f, 0.0f, 1.0f};
+Structure::XYZW_GL c110 = {0.0f, 0.0f, 0.0f, 1.0f};
+Structure::XYZW_GL c001 = {0.0f, 0.0f, 0.0f, 1.0f};
+Structure::XYZW_GL c101 = {0.0f, 0.0f, 0.0f, 1.0f};
+Structure::XYZW_GL c011 = {0.0f, 0.0f, 0.0f, 1.0f};
+Structure::XYZW_GL c111 = {0.0f, 0.0f, 0.0f, 1.0f};
+
+Structure::RGBA_GL color = {1.0f, 0.0f, 0.0f, 0.0f};
+
+bool drawTreeFrameNode(OctaTreeNode *n) {
+
+    c000.x = (float) n->xmin;
+    c000.y = (float) n->ymin;
+    c000.z = (float) n->zmin;
+    c100.x = (float) n->xmax;
+    c100.y = (float) n->ymin;
+    c100.z = (float) n->zmin;
+    c010.x = (float) n->xmin;
+    c010.y = (float) n->ymax;
+    c010.z = (float) n->zmin;
+    c110.x = (float) n->xmax;
+    c110.y = (float) n->ymax;
+    c110.z = (float) n->zmin;
+    c001.x = (float) n->xmin;
+    c001.y = (float) n->ymin;
+    c001.z = (float) n->zmax;
+    c101.x = (float) n->xmax;
+    c101.y = (float) n->ymin;
+    c101.z = (float) n->zmax;
+    c011.x = (float) n->xmin;
+    c011.y = (float) n->ymax;
+    c011.z = (float) n->zmax;
+    c111.x = (float) n->xmax;
+    c111.y = (float) n->ymax;
+    c111.z = (float) n->zmax;
+
+    // Front
+    new_tree_frame_pos->push_back(c000);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c100);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c000);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c010);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c010);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c110);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c100);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c110);
+    new_tree_frame_colour->push_back(color);
+
+    // Middle
+    new_tree_frame_pos->push_back(c000);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c001);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c100);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c101);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c010);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c011);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c110);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c111);
+    new_tree_frame_colour->push_back(color);
+
+    // Back
+    new_tree_frame_pos->push_back(c001);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c101);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c001);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c011);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c101);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c111);
+    new_tree_frame_colour->push_back(color);
+
+    new_tree_frame_pos->push_back(c011);
+    new_tree_frame_colour->push_back(color);
+    new_tree_frame_pos->push_back(c111);
+    new_tree_frame_colour->push_back(color);
+
+}
+
+void drawTreeFrameNodeRecursive(OctaTreeNode *node, unsigned level) {
+    if (node != nullptr and node->level < level) {
+        for (int i = 0; i < 8; i++) {
+            if (node->leaf[i] != nullptr) {
+                drawTreeFrameNodeRecursive(node->leaf[i], level);
+            }
+        }
+        drawTreeFrameNode(node);
+    }
+}
+
+
+void caculateTreeFrame() {
+
+    if (gravityCalculator == nullptr
+        || gravityCalculator->getOctaTree() == nullptr
+        || gravityCalculator->getBuildInProgress() ) {
+        return;
+    }
+
+    if ( tree_frame_pos == tree_frame_pos_2 ) {
+        new_tree_frame_pos = tree_frame_pos_1;
+        new_tree_frame_colour = tree_frame_colour_1;
+    } else {
+        new_tree_frame_pos = tree_frame_pos_2;
+        new_tree_frame_colour = tree_frame_colour_2;
+    }
+
+    new_tree_frame_pos->clear();
+    new_tree_frame_colour->clear();
+
+    OctaTreeNode *n = gravityCalculator->getOctaTree()->getHead();
+
+    drawTreeFrameNodeRecursive(n, 9);
+
+    tree_frame_pos = new_tree_frame_pos;
+    tree_frame_colour = new_tree_frame_colour;
+
+}
 
 void RenderFunction() {
 
@@ -282,11 +458,35 @@ void RenderFunction() {
         glDrawArrays(GL_LINES, 0, 6);
     }
 
+
+
+    if (showTreeFrame)  {
+
+        caculateTreeFrame();
+
+        if ( tree_frame_pos->size() > 0) {
+
+            glBindBuffer(GL_ARRAY_BUFFER, VboTreeFrameLinesId);
+            glBufferData(GL_ARRAY_BUFFER, tree_frame_pos->size() * sizeof(Structure::XYZW_GL), tree_frame_pos->data(),
+                         GL_STATIC_DRAW);
+            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::XYZW_GL), 0);
+            glEnableVertexAttribArray(1);
+
+            glBindBuffer(GL_ARRAY_BUFFER, VboTreeFrameColorsId);
+            glBufferData(GL_ARRAY_BUFFER, tree_frame_colour->size() * sizeof(Structure::RGBA_GL), tree_frame_colour->data(),
+                         GL_STATIC_DRAW);
+            glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::RGBA_GL), 0);
+            glEnableVertexAttribArray(0);
+
+            glDrawArrays(GL_LINES, 0, (GLsizei) tree_frame_pos->size());
+        }
+    }
+
+
+
     glFlush();
     glutSwapBuffers();
     rendering = false;
-
-
 }
 
 
@@ -351,6 +551,14 @@ void CreateVBO() {
 
     glGenBuffers(1, &VboAxisLinesId);
     glGenBuffers(1, &VboAxisColorsId);
+
+    // Buffers for the Axis
+
+    glGenVertexArrays(1, &VaoTreeFrameId);
+    glBindVertexArray(VaoTreeFrameId);
+
+    glGenBuffers(1, &VboTreeFrameLinesId);
+    glGenBuffers(1, &VboTreeFrameColorsId);
 
 
 

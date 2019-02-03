@@ -6,6 +6,8 @@
 
 OctaTreeNode::OctaTreeNode(
         OctaTreeNode *parent,
+        Structure * s,
+        std::vector<unsigned> * element_candidates,
         unsigned level,
         unsigned X, unsigned Y, unsigned Z,
         double h
@@ -15,6 +17,7 @@ OctaTreeNode::OctaTreeNode(
     this->X = X;
     this->Y = Y;
     this->Z = Z;
+    //this->elements.reserve(element_candidates->size()/8);
 
     std::fill(leaf, leaf + 8, nullptr);
 
@@ -39,15 +42,49 @@ OctaTreeNode::OctaTreeNode(
         zmax = h;
     }
     V = (xmax-xmin)*(xmax-xmin)*(xmax-xmin);
+
     mass = 0;
-    x = (xmax+xmin)/2.0;
-    y = (ymax+ymin)/2.0;
-    z = (zmax+zmin)/2.0;
+    x = 0;
+    y = 0;
+    z = 0;
+
+    std::for_each(element_candidates->begin(), element_candidates->end(),
+                  [s, this](unsigned i){
+                      auto pos = s->getPositions()[i].pos;
+                      if (
+                             (pos.x >= xmin)
+                          && (pos.x < xmax)
+                          && (pos.y >= ymin)
+                          && (pos.y < ymax)
+                          && (pos.z >= zmin)
+                          && (pos.z <= zmax)
+                              ) {
+                          elements.push_back(i);
+                          mass += s->getMasses()[i].m;
+                          x += pos.x;
+                          y += pos.y;
+                          z += pos.z;
+                      }
+                  });
+    x /= (double)elements.size();
+    y /= (double)elements.size();
+    z /= (double)elements.size();
+
+}
+
+OctaTreeNode::~OctaTreeNode() {
+    for (unsigned i = 0; i < 8; i++) {
+        if (this->leaf[i] != nullptr) {
+            delete this->leaf[i];
+            this->leaf[i] = nullptr;
+        }
+
+    }
 }
 
 std::ostream &operator<<(std::ostream &os, const OctaTreeNode *node) {
     os << (void *) node << ": "
-       << node->level;
+       << std::setw(2) << node->level;
 
     auto node_counter = (OctaTreeNode*)node;
     while( node_counter->parent != nullptr ) {
@@ -57,6 +94,7 @@ std::ostream &operator<<(std::ostream &os, const OctaTreeNode *node) {
 
     os << " ("
        << node->X << ", " << node->Y << ", " << node->Z << "), ("
+       << node->elements.size() << "), ("
        << node->x << ", " << node->y << ", " << node->z << "), ("
        << node->xmin << ", " << node->xmax << "), ("
        << node->ymin << ", " << node->ymax << "), ("
@@ -68,6 +106,8 @@ std::ostream &operator<<(std::ostream &os, const OctaTreeNode *node) {
         os << (void *) node->leaf[i] << ", ";
     }
     os << (void *) node->leaf[7] << ")";
+
+    os << "["<<((node->xmax-node->xmin)/2.0) / std::sqrt(node->x*node->x+node->y*node->y+node->z*node->z)<<"]";
 
     return os;
 }
@@ -85,6 +125,8 @@ OctaTree::OctaTree(Structure * s) {
 
     auto startTime = std::chrono::system_clock::now();
 
+    this->s = s;
+
     // Create the list of vectors which will contain the nodes for each level
     // XXX levelVector = std::vector<std::vector<OctaTreeNode *>>(max_level+1);
 
@@ -98,49 +140,80 @@ OctaTree::OctaTree(Structure * s) {
     */
 
     // Recurseively create the node structure
-    head = createNode((OctaTreeNode *) nullptr, 0, 0, 0, 0, h);
+    std::vector<unsigned> all_elements(s->getPositions().size());
+    std::iota(all_elements.begin(), all_elements.end(), 0);
+
+    head = createNode((OctaTreeNode *) nullptr, &all_elements, 0, 0, 0, 0);
     auto endTime = std::chrono::system_clock::now();
     std::cout << "Tree creation time:" << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() << "\n";
 
 }
 
 OctaTreeNode *OctaTree::createNode(OctaTreeNode * parent,
+                                   std::vector<unsigned> * element_candidates,
                                    unsigned level,
-                                   unsigned X, unsigned Y, unsigned Z,
-                                   double h) {
+                                   unsigned X, unsigned Y, unsigned Z ) {
 
-    auto node = new OctaTreeNode( parent, level, X, Y, Z, h );
-    levelVector[level][getPos(level, X, Y, Z)] = node;
+    auto node = new OctaTreeNode( parent, s, element_candidates, level, X, Y, Z, s->getH() );
+    // levelVector[level][getPos(level, X, Y, Z)] = node;
 
-    if (level < max_level) {
+    if (node->elements.size() > 1) {
+
+        // If there is more than one element then break down further
+
         for (unsigned i = 0; i < 8; i++ ) {
 
             // The formula for the nodes is to double the current position
             // and add the binary bit of the index
             node->leaf[i] = createNode(node,
+                                       &node->elements,
                                        level + 1,
                                        (X*2) + (i&1),
                                        (Y*2) + ((i>>1)&1),
-                                       (Z*2) + ((i>>2)&1),
-                                       h
+                                       (Z*2) + ((i>>2)&1)
             );
         }
+    } else if (node->elements.size() == 1) {
+
+        // If there is one element then stop here
+        return node;
+    } else {
+
+        // If this node is empty then stop here
+        delete node;
+        return nullptr;
     }
 
     return node;
 }
 
-void OctaTree::printOneNode(OctaTreeNode *node) {
+void OctaTree::printNodeRecursive(OctaTreeNode *node) {
     std::cout << node << "\n";
     if (node != nullptr) {
         for (int i = 0; i < 8; i++) {
             if (node->leaf[i] != nullptr) {
-                printOneNode(node->leaf[i]);
+                printNodeRecursive(node->leaf[i]);
             }
         }
     }
 }
 
+void OctaTree::printNodeRecursive(OctaTreeNode *node, double max_angle) {
+    std::cout << node << "\n";
+    if ( (node != nullptr)
+         &&  ((((node->xmax-node->xmin)/2.0)
+               / std::sqrt(node->x*node->x+node->y*node->y+node->z*node->z)) > max_angle )
+            ) {
+        for (int i = 0; i < 8; i++) {
+            if (node->leaf[i] != nullptr) {
+                printNodeRecursive(node->leaf[i], max_angle);
+            }
+        }
+    }
+}
+
+
+/*
 void OctaTree::printNodesPerLevel() {
     int level = 0;
     for (std::vector<OctaTreeNode *> nodes : levelVector) {
@@ -157,6 +230,7 @@ void OctaTree::printNodesPerLevel() {
         level++;
     }
 }
+*/
 
 void OctaTree::printNodes() {
 
@@ -172,8 +246,8 @@ void OctaTree::printNodes() {
     psbuf = filestr.rdbuf();        // get file's streambuf
     std::cout.rdbuf(psbuf);         // assign streambuf to cout
 
-    printOneNode(head);
-    printNodesPerLevel();
+    printNodeRecursive(head);
+    // printNodesPerLevel();
 
     std::cout.rdbuf(backup);        // restore cout's original streambuf
 
@@ -190,15 +264,18 @@ OctaTreeNode *OctaTree::getHead() {
     return head;
 }
 
+/*
 std::vector<OctaTreeNode *> OctaTree::getLevelVector(unsigned level) {
     return levelVector[level];
 
 }
+*/
 
 unsigned OctaTree::getMaxLevel() {
     return max_level;
 }
 
+/*
 OctaTreeNode *OctaTree::getNode(double x, double y, double z) {
     auto cell_width = 2.0 * this->h / getWidth(this->max_level);
     auto X = (unsigned)((x+h) / cell_width);
@@ -206,6 +283,6 @@ OctaTreeNode *OctaTree::getNode(double x, double y, double z) {
     auto Z = (unsigned)((z+h) / cell_width);
     return levelVector[max_level][getPos(max_level, X, Y, Z)];
 }
-
+*/
 
 

@@ -18,7 +18,7 @@ public:
     Structure(std::string filename );
 
     struct XYZ {
-        float x, y, z;
+        double x, y, z;
     };
 
     struct XYZW_GL {
@@ -30,7 +30,7 @@ public:
     };
 
     struct Mass {
-        float m;
+        double m;
     };
 
     struct Position {
@@ -90,6 +90,13 @@ private:
     unsigned int num_objects;
 
     std::vector<Structure::Mass> masses;
+
+    double h;
+
+    bool ready = false;
+public:
+    double getH() const;
+    bool isReady() { return ready; }
 
 private:
     std::vector<Structure::Velocity> velocities;

@@ -18,9 +18,12 @@ struct OctaTreeNode {
 
 public:
     OctaTreeNode( OctaTreeNode *parent,
+                  Structure * s,
+                  std::vector<unsigned> * element_candidates,
                   unsigned level,
                   unsigned X, unsigned Y, unsigned Z,
                   double h);
+    ~OctaTreeNode();
 
     OctaTreeNode * parent;
     OctaTreeNode * leaf[8];
@@ -40,16 +43,17 @@ public:
     OctaTree(Structure * structure);
     void printNodes();
     OctaTreeNode * getHead();
-    std::vector<OctaTreeNode*> getLevelVector(unsigned level);
+    // std::vector<OctaTreeNode*> getLevelVector(unsigned level);
     unsigned getMaxLevel();
-    OctaTreeNode *getNode(double x, double y, double z);
+    // OctaTreeNode *getNode(double x, double y, double z);
 
 private:
     OctaTreeNode * createNode( OctaTreeNode * parent,
+                               std::vector<unsigned> * element_candidates,
                                unsigned level,
-                               unsigned X, unsigned Y, unsigned Z,
-                               double h );
-    void printOneNode(OctaTreeNode*);
+                               unsigned X, unsigned Y, unsigned Z);
+    void printNodeRecursive(OctaTreeNode *);
+    void printNodeRecursive(OctaTreeNode *, double max_angle);
     //std::vector<std::vector<OctaTreeNode*>> levelVector;
     void printNodesPerLevel();
     unsigned getWidth(unsigned level);
@@ -57,7 +61,7 @@ private:
 
     unsigned max_level = 0;
     OctaTreeNode *head;
-    double h;
+    Structure * s;
 
 };
 

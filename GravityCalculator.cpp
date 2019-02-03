@@ -31,3 +31,23 @@ void GravityCalculator::stopTimer() {
 long GravityCalculator::getTime() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 }
+
+OctaTree * GravityCalculator::getOctaTree( ) {
+    return this->ot;
+}
+
+void GravityCalculator::initialiseOctaTree(Structure * structure) {
+
+    buildInProgress = true;
+
+    if(ot != nullptr) {
+        ot->getHead()->~OctaTreeNode();
+    }
+    ot = new OctaTree(structure);
+
+    buildInProgress = false;
+}
+
+bool GravityCalculator::getBuildInProgress() {
+    return buildInProgress;
+}

@@ -28,9 +28,9 @@ void DirectNBodyGravityCalculator::_calculate() {
             // Assumption: All masses are 1
             // Assumption: G = 1
 
-            float dx = pos[j].pos.x - pos[i].pos.x;
-            float dy = pos[j].pos.y - pos[i].pos.y;
-            float dz = pos[j].pos.z - pos[i].pos.z;
+            float dx = pos[i].pos.x - pos[j].pos.x;
+            float dy = pos[i].pos.y - pos[j].pos.y;
+            float dz = pos[i].pos.z - pos[j].pos.z;
             float r = std::sqrt(dx*dx+dy*dy+dz*dz);
 
             float g = softening(r);

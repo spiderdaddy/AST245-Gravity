@@ -7,7 +7,7 @@
 
 #include <chrono>
 #include "Structure.h"
-
+#include "OctaTree.h"
 
 class GravityCalculator {
 
@@ -21,6 +21,9 @@ public:
 
     void calculate();
     long getTime();
+    OctaTree * getOctaTree();
+    bool getBuildInProgress();
+
 
 protected:
 
@@ -31,6 +34,9 @@ protected:
 
     std::chrono::system_clock::time_point startTime;
     std::chrono::system_clock::time_point endTime;
+    OctaTree * ot = nullptr;
+    void initialiseOctaTree(Structure *);
+    bool buildInProgress = false;
 
 };
 

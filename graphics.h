@@ -7,6 +7,8 @@
 
 #include <cstring>
 #include "Structure.h"
+#include "GravityCalculator.h"
+#include "OctaTree.h"
 
 using namespace std;
 
@@ -35,6 +37,7 @@ void InitializeGraphics(int argc, char *argv[]);
 bool getKeyPressed();
 
 void setStructure( Structure * s );
+void setCalculator( GravityCalculator * );
 
 void GraphicsMainLoop();
 
@@ -44,5 +47,7 @@ void pause_render();
 void resume_render();
 
 bool isRendering();
+
+
 
 #endif //GRAVITY_GRAPHICS_H

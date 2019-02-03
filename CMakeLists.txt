@@ -17,6 +17,6 @@ add_executable(
         GravityCalculator.cpp
         GravityCalculator.h
         DirectNBodyGravityCalculator.cpp
-        DirectNBodyGravityCalculator.h OctaTree.cpp OctaTree.h)
+        DirectNBodyGravityCalculator.h OctaTree.cpp OctaTree.h OctaTreeMultipoleGravityCalculator.cpp OctaTreeMultipoleGravityCalculator.h)
 
 target_link_libraries(Gravity glut GL GLEW GLU pthread freeimage glfw )

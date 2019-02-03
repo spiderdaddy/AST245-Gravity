@@ -51,7 +51,6 @@ vector<Structure::Potential> &Structure::getPotentials() {
 
 
 
-
 Structure::Structure( std::string filename ) {
 
     loadFile(filename);
@@ -62,6 +61,8 @@ Structure::Structure( std::string filename ) {
     MapObjectToColor();
     //PrintPoints();
     CalcSystemEnergy();
+
+    ready = true;
 }
 
 
@@ -146,18 +147,19 @@ void Structure::loadFile( string filename ) {
             }
 
             velocities.reserve(num_objects);
+            double vfactor = 1.0e-9;
 
             for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
                 getline(myfile, line);
-                velocities.push_back({ std::stof(line), 0.0f, 0.0f});
+                velocities.push_back({ std::stof(line)*vfactor, 0.0f, 0.0f});
             }
             for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
                 getline(myfile, line);
-                velocities[i].v.y = std::stof(line);
+                velocities[i].v.y = std::stof(line)*vfactor;
             }
             for ( int i = 0; i < num_objects && myfile.good(); i++ ) {
                 getline(myfile, line);
-                velocities[i].v.z = std::stof(line);
+                velocities[i].v.z = std::stof(line)*vfactor;
             }
 
             softenings.reserve(num_objects);
@@ -190,6 +192,14 @@ void Structure::loadFile( string filename ) {
             minPosition.pos.x = minmax_x.first->pos.x;
             minPosition.pos.y = minmax_y.first->pos.y;
             minPosition.pos.z = minmax_z.first->pos.z;
+
+            auto max_x = std::max(std::abs(maxPosition.pos.x), std::abs(minPosition.pos.x));
+            auto max_y = std::max(std::abs(maxPosition.pos.y), std::abs(minPosition.pos.y));
+            auto max_z = std::max(std::abs(maxPosition.pos.z), std::abs(minPosition.pos.z));
+
+            h = std::ceil(std::max(std::max(max_x, max_y), max_z));
+
+
 
             cout << "Data Load Complete\n";
 
@@ -290,4 +300,8 @@ void Structure::saveFile( string filename_base ) {
         cout << "Unable to open file" << filename << "\n";
     }
 
+}
+
+double Structure::getH() const {
+    return h;
 }
