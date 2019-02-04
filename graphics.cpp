@@ -103,21 +103,14 @@ std::vector<Structure::RGBA_GL> axis_colour {
     {1.0f,    0.0f,    0.0f,    0.0f},
 };
 
-bool showTreeFrame = true;
+bool showTreeFrame = false;
+bool treeFrameLevelOnly = false;
+int treeFrameLevel = 8;
 GLuint VaoTreeFrameId;
 GLuint VboTreeFrameLinesId;
 GLuint VboTreeFrameColorsId;
-std::vector<Structure::XYZW_GL> * tree_frame_pos;
-std::vector<Structure::RGBA_GL> * tree_frame_colour;
-std::vector<Structure::XYZW_GL> * new_tree_frame_pos;
-std::vector<Structure::RGBA_GL> * new_tree_frame_colour;
-std::vector<Structure::XYZW_GL> * tree_frame_pos_1;
-std::vector<Structure::RGBA_GL> * tree_frame_colour_1;
-std::vector<Structure::XYZW_GL> * tree_frame_pos_2;
-std::vector<Structure::RGBA_GL> * tree_frame_colour_2;
-
-
-
+std::vector<Structure::XYZW_GL> tree_frame_pos;
+std::vector<Structure::RGBA_GL> tree_frame_colour;
 
 bool keyPressed = false;
 void keyDownFunc( unsigned char key, int x, int y) {
@@ -156,6 +149,7 @@ void keyDownFunc( unsigned char key, int x, int y) {
             camPhi = -glm::quarter_pi<float>();
             camRadius = radius;
             zoomFactor=1.0f;
+            treeFrameLevel = 9;
             break;
 
         case 'x':
@@ -165,6 +159,23 @@ void keyDownFunc( unsigned char key, int x, int y) {
         case 'b':
             showTreeFrame = !showTreeFrame;
             break;
+
+        case 'r':
+            treeFrameLevel++;
+            cout << "Level: " << treeFrameLevel << "\n";
+            break;
+        case 'f':
+            treeFrameLevel--;
+            if (treeFrameLevel < 0 ) {
+                treeFrameLevel = 0;
+            }
+            cout << "Level: " << treeFrameLevel << "\n";
+            break;
+
+        case 'v':
+            treeFrameLevelOnly = !treeFrameLevelOnly;
+            break;
+
 
     }
 
@@ -211,16 +222,6 @@ void InitializeGraphics(int argc, char *argv[]) {
     glutKeyboardFunc(keyDownFunc);
     glutKeyboardUpFunc(keyUpFunc);
 
-    tree_frame_pos_1 = new std::vector<Structure::XYZW_GL>;
-    tree_frame_colour_1 = new std::vector<Structure::RGBA_GL>;
-    tree_frame_pos_2 = new std::vector<Structure::XYZW_GL>;
-    tree_frame_colour_2 = new std::vector<Structure::RGBA_GL>;
-
-    tree_frame_pos = tree_frame_pos_1;
-    tree_frame_colour = tree_frame_colour_1;
-    new_tree_frame_pos = tree_frame_pos_2;
-    new_tree_frame_colour = tree_frame_colour_2;
-
 }
 
 Structure::XYZW_GL c000 = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -232,7 +233,7 @@ Structure::XYZW_GL c101 = {0.0f, 0.0f, 0.0f, 1.0f};
 Structure::XYZW_GL c011 = {0.0f, 0.0f, 0.0f, 1.0f};
 Structure::XYZW_GL c111 = {0.0f, 0.0f, 0.0f, 1.0f};
 
-Structure::RGBA_GL color = {1.0f, 0.0f, 0.0f, 0.0f};
+Structure::RGBA_GL color = {1.0f, 0.5f, 0.0f, 0.0f};
 
 bool drawTreeFrameNode(OctaTreeNode *n) {
 
@@ -262,78 +263,84 @@ bool drawTreeFrameNode(OctaTreeNode *n) {
     c111.z = (float) n->zmax;
 
     // Front
-    new_tree_frame_pos->push_back(c000);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c100);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c000);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c100);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c000);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c010);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c000);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c010);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c010);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c110);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c010);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c110);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c100);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c110);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c100);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c110);
+    tree_frame_colour.push_back(color);
 
     // Middle
-    new_tree_frame_pos->push_back(c000);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c001);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c000);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c001);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c100);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c101);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c100);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c101);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c010);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c011);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c010);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c011);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c110);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c111);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c110);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c111);
+    tree_frame_colour.push_back(color);
 
     // Back
-    new_tree_frame_pos->push_back(c001);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c101);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c001);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c101);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c001);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c011);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c001);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c011);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c101);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c111);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c101);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c111);
+    tree_frame_colour.push_back(color);
 
-    new_tree_frame_pos->push_back(c011);
-    new_tree_frame_colour->push_back(color);
-    new_tree_frame_pos->push_back(c111);
-    new_tree_frame_colour->push_back(color);
+    tree_frame_pos.push_back(c011);
+    tree_frame_colour.push_back(color);
+    tree_frame_pos.push_back(c111);
+    tree_frame_colour.push_back(color);
 
 }
 
-void drawTreeFrameNodeRecursive(OctaTreeNode *node, unsigned level) {
-    if (node != nullptr and node->level < level) {
+void drawTreeFrameNodeRecursive(OctaTreeNode *node) {
+    if (node != nullptr and node->level <= treeFrameLevel) {
         for (int i = 0; i < 8; i++) {
             if (node->leaf[i] != nullptr) {
-                drawTreeFrameNodeRecursive(node->leaf[i], level);
+                drawTreeFrameNodeRecursive(node->leaf[i]);
             }
         }
-        drawTreeFrameNode(node);
+        if ( treeFrameLevelOnly ) {
+            if (node->level == treeFrameLevel ) {
+                drawTreeFrameNode(node);
+            }
+        } else {
+            drawTreeFrameNode(node);
+        }
     }
 }
 
@@ -346,23 +353,12 @@ void caculateTreeFrame() {
         return;
     }
 
-    if ( tree_frame_pos == tree_frame_pos_2 ) {
-        new_tree_frame_pos = tree_frame_pos_1;
-        new_tree_frame_colour = tree_frame_colour_1;
-    } else {
-        new_tree_frame_pos = tree_frame_pos_2;
-        new_tree_frame_colour = tree_frame_colour_2;
-    }
-
-    new_tree_frame_pos->clear();
-    new_tree_frame_colour->clear();
+    tree_frame_pos.clear();
+    tree_frame_colour.clear();
 
     OctaTreeNode *n = gravityCalculator->getOctaTree()->getHead();
 
-    drawTreeFrameNodeRecursive(n, 9);
-
-    tree_frame_pos = new_tree_frame_pos;
-    tree_frame_colour = new_tree_frame_colour;
+    drawTreeFrameNodeRecursive(n);
 
 }
 
@@ -464,21 +460,21 @@ void RenderFunction() {
 
         caculateTreeFrame();
 
-        if ( tree_frame_pos->size() > 0) {
+        if ( tree_frame_pos.size() > 0) {
 
             glBindBuffer(GL_ARRAY_BUFFER, VboTreeFrameLinesId);
-            glBufferData(GL_ARRAY_BUFFER, tree_frame_pos->size() * sizeof(Structure::XYZW_GL), tree_frame_pos->data(),
+            glBufferData(GL_ARRAY_BUFFER, tree_frame_pos.size() * sizeof(Structure::XYZW_GL), tree_frame_pos.data(),
                          GL_STATIC_DRAW);
             glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::XYZW_GL), 0);
             glEnableVertexAttribArray(1);
 
             glBindBuffer(GL_ARRAY_BUFFER, VboTreeFrameColorsId);
-            glBufferData(GL_ARRAY_BUFFER, tree_frame_colour->size() * sizeof(Structure::RGBA_GL), tree_frame_colour->data(),
+            glBufferData(GL_ARRAY_BUFFER, tree_frame_colour.size() * sizeof(Structure::RGBA_GL), tree_frame_colour.data(),
                          GL_STATIC_DRAW);
             glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Structure::RGBA_GL), 0);
             glEnableVertexAttribArray(0);
 
-            glDrawArrays(GL_LINES, 0, (GLsizei) tree_frame_pos->size());
+            glDrawArrays(GL_LINES, 0, (GLsizei) tree_frame_pos.size());
         }
     }
 

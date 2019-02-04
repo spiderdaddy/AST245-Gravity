@@ -23,7 +23,10 @@ void TimeIntegrateOctaTreeMultipoleGravityThread() {
     auto calculator = new OctaTreeMultipoleGravityCalculator(structure);
     setCalculator(calculator);
 
-    calculator->setMaxOpeningAngle(.5);
+
+    auto theta = 0.5;
+
+    calculator->setMaxOpeningAngle(theta);
     std::vector<Structure::Acceleration> &acc = structure->getAccelerations();
     std::vector<Structure::Position> &pos = structure->getPositions();
     std::vector<Structure::Velocity> &v = structure->getVelocities();
@@ -50,6 +53,13 @@ void TimeIntegrateOctaTreeMultipoleGravityThread() {
 
         calculator->calculate();
         cout << "Calculation time = " << calculator->getTime() << "ms \n";
+        if( i == 0 ) {
+            string filename;
+            filename.append("OctaTreeMultipole-");
+            filename.append(std::to_string(theta));
+
+            structure->saveFile(filename);
+        }
 
         for( unsigned j = 0; j < acc.size(); j++) {
             v[j].v.x += acc[j].a.x * dt;
@@ -81,16 +91,16 @@ void calculateOctaTreeMultipoleGravityThread() {
     Structure *structure = new Structure("../data.ascii");
     setStructure(structure);
     auto calculator = new OctaTreeMultipoleGravityCalculator(structure);
+    double theta[] = {0.05, 0.1, 0.2, 0.4, 0.8, 1.0};
 
-    for ( int t = 4; t > 3 ; t-- ) {
-        auto theta = ((double)t)/10.0;
-        cout << "Max opening angle = " << theta << "\n";
-        calculator->setMaxOpeningAngle(theta);
+    for ( int i = 0; i < sizeof(theta)/sizeof(theta[0]) ; i++ ) {
+        cout << "Max opening angle = " << theta[i] << "\n";
+        calculator->setMaxOpeningAngle(theta[i]);
         calculator->calculate();
         cout << "Calculation time = " << calculator->getTime() << "ms \n";
         string filename;
         filename.append("OctaTreeMultipole-");
-        filename.append(std::to_string(theta));
+        filename.append(std::to_string(theta[i]));
 
         structure->saveFile(filename);
     }
